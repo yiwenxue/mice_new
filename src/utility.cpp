@@ -1,18 +1,15 @@
-#include <cmath>
-#include <cstdlib>
-#include <gsl/gsl_statistics_double.h>
-#include <math.h>
-#include <string>
 #include <utility.h>
 
-mice::mice(std::string filename, int windows_size, int start_in, int length_in): fullpath(filename), seg_size(windows_size), start(start_in), length(length_in){
+mice::mice(std::string filename, int windows_size, int start_in, int length_in)
+    : fullpath(filename), seg_size(windows_size), start(start_in), length(length_in){
     mice_path_name();
     read_mice_data();
     solve_windows();
     solve_init();
 }
 
-mice::~mice(){
+mice::~mice()
+{
     /* delete data_ori; delete data; delete average; delete dfa; delete std; */
     delete[] data; delete[] data_t;
     delete[] data_original_t; delete[] data_original;
@@ -24,14 +21,16 @@ mice::~mice(){
 }
 
 // tempt function for debug
-void mice::print_data(){
+void mice::print_data()
+{
     for (int i = 0; i < size_original; ++i) {
         std::cout << "Line: " << i << "\tval:" << data[i] << std::endl;
     }
 }
 
 // minimum function to get filename, micename, file path, from full path.
-void mice::mice_path_name(){
+void mice::mice_path_name()
+{
 #ifdef __WIN32
     char sep = '\\';
 #else
@@ -47,7 +46,8 @@ void mice::mice_path_name(){
 }
 
 // easy function to output the general details of the mice.
-void mice::print_details(){
+void mice::print_details()
+{
     std::cout << "file:          " << filename << std::endl;
     std::cout << "path:          " << path << std::endl;
     std::cout << "name:          " << mice_name << std::endl;
@@ -58,7 +58,8 @@ void mice::print_details(){
     std::cout << "seg_size:      " << seg_size << std::endl;
 }
 
-void mice::file_lines(void){
+void mice::file_lines(void)
+{
     FILE *input = fopen(fullpath.c_str(),"r");
     if(input == NULL){
         fprintf(stderr,"(File Lines)Failed to read %s\n",filename.c_str());
@@ -77,7 +78,8 @@ void mice::file_lines(void){
     fclose(input);
 }
 
-void mice::read_mice_data(void){
+void mice::read_mice_data(void)
+{
     file_lines();
     FILE* temp = fopen(fullpath.c_str(),"r");
     //Check if one can read this file;
@@ -157,13 +159,15 @@ void mice::read_mice_data(void){
     delete[] temp_data_t; delete[] temp_data;
 }
 
-void mice::solve_windows(){
+void mice::solve_windows()
+{
     seg_num = size_data / seg_size;
     d_seg_size = 1080;
     d_seg_num = size_data / d_seg_size;
 }
 
-void mice::solve_init(){
+void mice::solve_init()
+{
     int count = 48 * 360 / seg_size; 
     ave_days_num = count;
 
@@ -186,7 +190,8 @@ void mice::solve_init(){
     dfa_days_err = new double[48 * 360 / d_seg_size];
 }
 
-void mice::plot_all(){
+void mice::plot_all()
+{
     std::cout << "Drawing over view..." << std::flush;
     this->plot_overview();
     std::cout << " Finished!" << std::endl;
@@ -207,7 +212,8 @@ void mice::plot_all(){
     std::cout << " Finished!" << std::endl;
 }
 
-void mice::plot_overview(){
+void mice::plot_overview()
+{
     GnuplotPipe gp;
     gp.sendLine("set terminal pdf size 5,4");
     gp.sendLine("set title \'mice:" + mice_name + " " + type + " overview(" + std::to_string(seg_size) + ")\'" );
@@ -225,7 +231,8 @@ void mice::plot_overview(){
     gp.sendLine("set out");
 };
 
-void mice::plot_ave_rhy(){
+void mice::plot_ave_rhy()
+{
     GnuplotPipe gp;
     gp.sendLine("set terminal pdf size 5,4");
     gp.sendLine("set xrange [0:48]");
@@ -255,7 +262,8 @@ void mice::plot_ave_rhy(){
     }
 }
 
-void mice::plot_std_rhy(){
+void mice::plot_std_rhy()
+{
     if(type == "Activity"){
         GnuplotPipe gp;
         gp.sendLine("set terminal pdf size 5,4");
@@ -288,7 +296,8 @@ void mice::plot_std_rhy(){
     }
 }
 
-void mice::plot_dfa_rhy(){
+void mice::plot_dfa_rhy()
+{
     int count = 48 * 360 / d_seg_size; 
     for (int i = 0; i < d_seg_num; ++i) {      
         DFA new_dfa(data+(i*d_seg_size), d_seg_size, 1);
@@ -334,7 +343,8 @@ void mice::plot_dfa_rhy(){
     }
 }
 
-void mice::plot_powerspec(){
+void mice::plot_powerspec()
+{
     Powerspec new_power(data,size_data);
     GnuplotPipe gp;
     gp.sendLine("set terminal pdf size 5,4");
@@ -355,7 +365,8 @@ void mice::plot_powerspec(){
     }
 }
 
-void mice::plot_heatmap(){
+void mice::plot_heatmap()
+{
     GnuplotPipe gp;
     gp.sendLine("set terminal pdf size 5,4");
     gp.sendLine("set title \'mice:" + mice_name + " " + type + " heatmap(" + std::to_string(seg_size) + ")\'" );
@@ -392,7 +403,8 @@ void mice::plot_heatmap(){
     gp.sendLine("set out");
 }
 
-void mice::detail_vision(int start, int length){
+void mice::detail_vision(int start, int length)
+{
     GnuplotPipe gp;
     gp.sendLine("set terminal pdf size 5,4");
     gp.sendLine("set title \'mice:" + mice_name + " " + type + "detail");
@@ -409,7 +421,8 @@ void mice::detail_vision(int start, int length){
     gp.sendLine("set out");
 };
 
-int mktable(mice *mice1,mice *mice2, double sync_index, std::string batch, bool ifmutant){
+int mktable(mice *mice1,mice *mice2, double sync_index, std::string batch, bool ifmutant)
+{
     std::string output;
     if(mice1->type == "Activity"){
         output = 

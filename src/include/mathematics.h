@@ -2,17 +2,38 @@
 #include <fftw3.h>
 #include <cmath>
 #include <string>
+
+#ifndef __GSL_HISTOGRAM_H_
+#include <gsl/gsl_histogram.h>
+#endif
+
+#ifndef __GSL_STATISTICS_H__
 #include <gsl/gsl_statistics.h>
 #include <gsl/gsl_statistics_double.h>
-#include <gsl/gsl_multifit.h>
-#include <gsl/gsl_sf.h>
-#include <plot.h>
-#include <time.h>
+#endif 
 
-#define N 1000
+#ifndef __GSL_MULTIFIT_H__
+#include <gsl/gsl_multifit.h>
+#endif
+
+#ifndef  __GSL_SF_H__ 
+#include <gsl/gsl_sf.h>
+#endif 
+
+#ifndef GNUPLOT 
+#include <plot.h>
+#endif
+
+#ifndef MATHEMATICS 
+#define MATHEMATICS 
+#endif 
+
+#define NMICE 1000
 #define RE 0
 #define IM 1
 
+/// Mathematical function for least squre polynominal fit 
+/// @brief T Any float-point type such as float, double or long double
 class Polyfit{
     public:
         Polyfit(double *datax, double *datay, int _size, int _order);
@@ -49,10 +70,12 @@ class Cosinor{
         Cosinor(double *x, double *y, int size, int degree);
         virtual ~Cosinor();
         double fitfunc(double input);
-        inline int get_degree(){
+        inline int get_degree()
+        {
             return degree;
         }
-        inline double get_rsq(){
+        inline double get_rsq()
+        {
             return coeff;
         }
         void init(double *datax, double *datay);
@@ -80,13 +103,16 @@ class DFA{
         DFA(double *data, int data_size, int dfa_order);
         virtual ~DFA();
 
-        inline double get_rsq(){
+        inline double get_rsq()
+        {
             return coeff;
         }
-        inline int get_order(){
+        inline int get_order()
+        {
             return order;
         }
-        inline int get_size_o(){
+        inline int get_size_o()
+        {
             return size_o;
         }
         void init(double *data);        // init function;

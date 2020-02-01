@@ -6,9 +6,14 @@
 #include <cmath>
 #include <cstdio>
 #include <ostream>
-#include <gsl/gsl_statistics_double.h>
 
+#ifdef __GSL_STATISTICS_H__
+#include <gsl/gsl_statistics_double.h>
+#endif
+
+#ifndef MATHEMATICS
 #include <mathematics.h>
+#endif
 
 #define BATCH3 
 
@@ -50,10 +55,12 @@ class mice{
         ~mice();
         void print_data();
         void print_details();
-        inline int get_size(){
+        inline int get_size()
+        {
             return this->size_data;
         };
-        inline int get_size_origin(){
+        inline int get_size_origin()
+        {
             return this->size_original;
         };
         void plot_all();

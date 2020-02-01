@@ -4,6 +4,10 @@
 #include <vector>
 #include <cstdio>
 
+#ifndef GNUPLOT
+#define GNUPLOT 
+#endif
+
 class GnuplotPipe {
 public:
     inline GnuplotPipe(bool persist = true) {

@@ -1,14 +1,8 @@
-#include <cmath>
-#include <gsl/gsl_histogram.h>
-#include <gsl/gsl_statistics_double.h>
 #include <mathematics.h>
-#include <iostream>
-#include <math.h>
-#include <ostream>
-#include <string>
 
-
-Polyfit::Polyfit(double *datax, double *datay, int _size, int _degree): size(_size), degree(_degree){
+Polyfit::Polyfit(double *datax, double *datay, int _size, int _degree)
+    : size(_size), degree(_degree)
+{
     store = new double[degree];
     X = gsl_matrix_alloc(size, degree);
     y = gsl_vector_alloc(size);
@@ -20,7 +14,8 @@ Polyfit::Polyfit(double *datax, double *datay, int _size, int _degree): size(_si
     polyfit();
 };
 
-Polyfit::~Polyfit(){
+Polyfit::~Polyfit()
+{
     delete[] store;
     gsl_multifit_linear_free(ws);
     gsl_matrix_free(X);
@@ -29,7 +24,8 @@ Polyfit::~Polyfit(){
     gsl_vector_free(c);
 }
 
-void Polyfit::resize(int new_size){
+void Polyfit::resize(int new_size)
+{
     gsl_multifit_linear_free(ws);
     gsl_matrix_free(X);
     gsl_vector_free(y);
@@ -40,7 +36,8 @@ void Polyfit::resize(int new_size){
     ws = gsl_multifit_linear_alloc(size, degree);
 }
 
-double Polyfit::fitfunc(double input){
+double Polyfit::fitfunc(double input)
+{
     double temp = store[0];
     for (i = 1; i < degree; ++i) {
         temp += store[i] * pow(input,i);
@@ -48,7 +45,8 @@ double Polyfit::fitfunc(double input){
     return temp;
 };
 
-void Polyfit::init(double *datax,double *datay){
+void Polyfit::init(double *datax,double *datay)
+{
     meanx = gsl_stats_mean(datax,1,size); 
 
     for(i=0; i < size; i++) {
@@ -61,12 +59,14 @@ void Polyfit::init(double *datax,double *datay){
     tss = gsl_stats_tss(datay,1,size);
 }
 
-void Polyfit::recal(double *datax, double *datay){
+void Polyfit::recal(double *datax, double *datay)
+{
     init(datax, datay);
     polyfit();
 }
 
-bool Polyfit::polyfit(){
+bool Polyfit::polyfit()
+{
     // calculate
     gsl_multifit_linear(X, y, c, cov, &coeff, ws);
     coeff = 1.0 - coeff/tss;
@@ -88,7 +88,8 @@ bool Polyfit::polyfit(){
     return true;
 };
 
-Cosinor::Cosinor(double *data_x, double *data_y, int _size, int _degree): size(_size), degree(_degree){
+Cosinor::Cosinor(double *data_x, double *data_y, int _size, int _degree): size(_size), degree(_degree)
+{
     omega = M_PI/360.0/12.0;
     store = new double[degree];
     X = gsl_matrix_alloc (size,degree);
@@ -101,7 +102,8 @@ Cosinor::Cosinor(double *data_x, double *data_y, int _size, int _degree): size(_
     cosinor();
 };
 
-Cosinor::~Cosinor(){
+Cosinor::~Cosinor()
+{
     delete[] store;
     gsl_multifit_linear_free (ws);
     gsl_matrix_free (X);
@@ -110,7 +112,8 @@ Cosinor::~Cosinor(){
     gsl_matrix_free (cov);
 }
 
-double Cosinor::fitfunc(double input){
+double Cosinor::fitfunc(double input)
+{
     double temp = store[0];
     for(j=1;j<degree;j+=2){
         temp += store[j] * cos( omega * input) +
@@ -119,7 +122,8 @@ double Cosinor::fitfunc(double input){
     return temp;
 };
 
-void Cosinor::init(double *datax, double *datay){
+void Cosinor::init(double *datax, double *datay)
+{
     for(i=0;i<size;i++){
         gsl_matrix_set (X, i, 0, 1.0);
         gsl_vector_set (Y, i, datay[i]);
@@ -133,12 +137,14 @@ void Cosinor::init(double *datax, double *datay){
     tss = gsl_stats_tss(datay,1,size);
 }
 
-void Cosinor::recal(double *datax, double *datay){
+void Cosinor::recal(double *datax, double *datay)
+{
     init(datax, datay);
     cosinor();
 }
 
-bool Cosinor::cosinor(){
+bool Cosinor::cosinor()
+{
     gsl_multifit_linear (X, Y, c, cov, &coeff, ws);
     coeff = 1.0 - coeff/tss;
     for(i=0;i<degree;i++){
@@ -153,7 +159,8 @@ bool Cosinor::cosinor(){
     return true;
 };
 
-DFA::DFA(double *data, int data_size, int dfa_order): size(data_size), order(dfa_order){
+DFA::DFA(double *data, int data_size, int dfa_order): size(data_size), order(dfa_order)
+{
     rito = pow(2.0,1.0/8);
     minbox = 2*(order+1);
     maxbox = size/4;
@@ -172,7 +179,8 @@ DFA::DFA(double *data, int data_size, int dfa_order): size(data_size), order(dfa
     solver();
 };
 
-DFA::~DFA(){
+DFA::~DFA()
+{
     delete[] dfax;
     delete[] dfay;
     delete[] data_x;
@@ -181,7 +189,8 @@ DFA::~DFA(){
     delete[] seg_size;
 };
 
-void DFA::init(double *data){
+void DFA::init(double *data)
+{
     // First step: To get the profile
     // remove and integral 
     double rm = gsl_stats_mean(data, 1, size);
@@ -199,19 +208,22 @@ void DFA::init(double *data){
     }
 }
 
-void DFA::mkbox(){
+void DFA::mkbox()
+{
     for(i = 1, j = 1, seg_size[0] = minbox; j < size_o && seg_size[j-1] < maxbox; ++i)
         if((seg_size[j] = minbox * pow(rito,i) + 0.5) > seg_size[j-1])
             j++;
     size_o = j;
 }
 
-void DFA::recal(double *data){
+void DFA::recal(double *data)
+{
     init(data);
     solver();
 }
 
-void DFA::solver(){
+void DFA::solver()
+{
     // init the window info
     int end = 0, tail = 0; 
     Polyfit new_fit( data_x, data_y, 10, order+1);
@@ -246,7 +258,8 @@ void DFA::solver(){
     func = std::to_string(store[0]) + " *x** " + std::to_string(store[1]) ;
 }
 
-void DFA::plot_over(int point){
+void DFA::plot_over(int point)
+{
     GnuplotPipe gp; 
     gp.sendLine("set terminal pdf size 5,4");
     gp.sendLine("set output 'DFA_" + std::to_string(point) + ".pdf'");
@@ -262,11 +275,13 @@ void DFA::plot_over(int point){
 
 }
 
-double DFA::fitfunc(double input) {
+double DFA::fitfunc(double input) 
+{
     return store[0] + store[1]*input;
 }
 
-Powerspec::Powerspec(double *data, int new_size){
+Powerspec::Powerspec(double *data, int new_size)
+{
     size = new_size;
     halfsize = size / 2;
     result = new double[halfsize];
@@ -274,11 +289,13 @@ Powerspec::Powerspec(double *data, int new_size){
     solver(data); 
 }
 
-Powerspec::~Powerspec(){
+Powerspec::~Powerspec()
+{
     delete[] result;
 }
 
-void Powerspec::solver(double *data){
+void Powerspec::solver(double *data)
+{
     double mean = gsl_stats_mean(data, 1, size);
     // process fft 
     fftw_complex * input, * output;
@@ -319,7 +336,8 @@ void Powerspec::solver(double *data){
     fftw_free(output);
 }
 
-Sync::Sync(double *in_datax, double *in_datay, int in_size){
+Sync::Sync(double *in_datax, double *in_datay, int in_size)
+{
     size = in_size;
     datax = new double[size];
     dataxh = new double[size];
@@ -346,7 +364,8 @@ Sync::Sync(double *in_datax, double *in_datay, int in_size){
     solver();
 }
 
-Sync::~Sync(){
+Sync::~Sync()
+{
     delete[] datax;
     delete[] dataxh;
     delete[] ampx;
@@ -357,7 +376,8 @@ Sync::~Sync(){
     delete[] phasey; 
 }
 
-void Sync::solver(){
+void Sync::solver()
+{
     hilbert_trans(datax, dataxh, size);
     hilbert_trans(datay, datayh, size);
 
@@ -396,7 +416,8 @@ void Sync::solver(){
     delete[] shannon;
 }
 
-void Sync::plot(std::string name, int seg_size){
+void Sync::plot(std::string name, int seg_size)
+{
     double diff;
     GnuplotPipe gp; 
     gp.sendLine("set terminal pdf size 5,4");
@@ -440,7 +461,8 @@ void Sync::plot(std::string name, int seg_size){
     gp.sendLine("set output");
 }
 
-void hilbert_trans(double *in, double *output,int num){
+void hilbert_trans(double *in, double *output,int num)
+{
     int i=0;
     fftw_complex *out;
     out = fftw_alloc_complex(num);
@@ -459,7 +481,7 @@ void hilbert_trans(double *in, double *output,int num){
         out[i][IM] *= 2;
     }
 
-    if(N%2 == 0)
+    if(NMICE%2 == 0)
         numRem --;
     else if(num>1){
         out[hN][RE] *= 2;
@@ -480,7 +502,8 @@ void hilbert_trans(double *in, double *output,int num){
     fftw_free(out);
 }
 
-int fft(fftw_complex *in, fftw_complex *out, int num){
+int fft(fftw_complex *in, fftw_complex *out, int num)
+{
     fftw_plan p; 
     p = fftw_plan_dft_1d(num,in,out,-1,FFTW_ESTIMATE); 
     fftw_execute(p);
@@ -488,7 +511,8 @@ int fft(fftw_complex *in, fftw_complex *out, int num){
     return 1;
 }
 
-int ifft(fftw_complex *in, fftw_complex *out, int num){
+int ifft(fftw_complex *in, fftw_complex *out, int num)
+{
     fftw_plan p; 
     p = fftw_plan_dft_1d(num,in,out,+1,FFTW_ESTIMATE); 
     fftw_execute(p);
