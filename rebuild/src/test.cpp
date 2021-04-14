@@ -1,38 +1,38 @@
 /* #include <TPDF.h> */
 #include <iostream>
+#include <mathematics.h>
+#include <utility.h>
+#include <cstdio>
 #include <TF1.h>
 #include <TCanvas.h>
 #include <TGraph.h>
 #include <TH1F.h>
 
-int main()
+int main(int argc, char **argv)
 {
-    TCanvas* canvas = new TCanvas("canvas");
-    TH1F* histo = new TH1F("histo","test 1",10,0.,10.);
-    histo->SetFillColor(2);
-    histo->Fill(2.);
-    histo->Draw();
-    canvas->Print("plots.pdf(","Title:One bin filled");
-    histo->Fill(4.);
-    histo->Draw();
-    canvas->Print("plots.pdf","Title:Two bins filled");
-    histo->Fill(6.);
-    histo->Draw();
-    canvas->Print("plots.pdf","Title:Three bins filled");
-    histo->Fill(8.);
-    histo->Draw();
-    canvas->Print("plots.pdf","Title:Four bins filled");
-    histo->Fill(8.);
-    histo->Draw();
-    canvas->Print("plots.pdf)","Title:The fourth bin content is 2");
-    double x[10] ={1,2,3,4,5,6,7,8,9,10};
-    double y[10] ={2,3,4,5,6,7,8,9,10,11};
-    TGraph *gr = new TGraph(10,x,y);
-    canvas->Clear();
-    gr->Draw();
-    sleep(1);
-    delete gr;
-    delete histo;
-    delete canvas;
+    if (argc < 2){
+        std::cout << "Usage: " << std::endl;
+        std::cout << "      <" << argv[0] << "> [file]" << std::endl;
+        exit(-1);
+    }
+
+    int lineNum = fileLines(std::string(argv[1]));
+    std::cout << "line Num: " << lineNum << std::endl;
+    FILE * readData = fopen(argv[1], "r");
+
+    auto data = new double [lineNum];
+
+    int i = 0; double temp = 0;
+    while ((fscanf(readData, "%lf\n", &temp) == 1) && i < lineNum) {
+        data[i++] = temp;
+    }
+    fclose(readData);
+    std::cout << "Read data: " << i << std::endl;
+
+    auto newdfa = new DFA(data, i, 2);
+    std::cout << "dfa alpha: " << newdfa->index << std::endl;
+
+    delete[] data;
+    delete newdfa;
     return 0;
 }

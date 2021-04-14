@@ -1,3 +1,4 @@
+#include <Rtypes.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -144,10 +145,16 @@ class TMice{
         /// draw an over view to select data.
         int DrawOverview();
 
+        /// Draw the heatmap of a time series.
+
         /// @details Count the number of errors and voids in original data and calculate the ratio errors divided by total numbers
         double GetErrorPercentage(int );
         int errors_temp;
         int errors_act;
+
+        double periodl;
+        double periodr;
+        double periodall;
 
         /// structure to store the period dfa information.
         struct {
@@ -157,6 +164,10 @@ class TMice{
             double rbp;
             double midbp;
         } period_dfa;
+        double *residuals_temp;
+        double *residuals_act;
+        void calculate_residual();
+        void residuals_cleanup();
     private:
         TCanvas *canvas;
         TGraph *grmice;
@@ -210,7 +221,11 @@ bool printMice(TMicemem mice);
 
 int mktable(TMice *mice1, TMice *mice2, double sync_index, std::string batch, bool ifmutant);
 
-int DFA_plot(double *data, int data_size, int dfa_order, std::string name,struct period_dfa *input);
+int DFA_dual_plot(double *data, int data_size, int dfa_order, std::string name,struct period_dfa *input);
+
+int DFA_plot(double *data, int data_size, int dfa_order, std::string name,struct period_dfa *input, double crossover = 0);
+
+int DFA_filter_plot(double *data, int data_size, int dfa_order, std::string name,struct period_dfa *input, TimeSeq dataRem);
 
 struct period_dfa{
     double lbp;
@@ -220,117 +235,145 @@ struct period_dfa{
     double midbp;
 };
 
-int loadmice(std::string infile){
-    FILE *config = fopen(infile.c_str(), "r");
+void data_overview(std::string name, TimeSeq seriesx, TimeSeq seriesy, int rangel = 0, int ranger = 0){
+    auto cv = new TCanvas("super cv");
+    cv->SetCanvasSize(480, 270);
+    auto pad = new TPad("pad", "", 0, 0, 1 ,1);
 
-    char _name[255];
-    char _path[255];
-    char _mutant[10];
-    int batch;
-    int start, length;
+    TGraph *gr1, *gr2;
 
-    std::vector<std::string> script;
+    if (ranger == 0){
+        gr1 = new TGraph(seriesx.size, seriesx.time, seriesx.data);
+        gr2 = new TGraph(seriesy.size, seriesy.time, seriesy.data);
+    }else if (ranger > seriesx.size || ranger > seriesy.size || rangel < 0){
+        printf("[!!] On plotting overview: out of range\n");
+        return;
+    } else {
+        gr1 = new TGraph(ranger-rangel, seriesx.time+rangel, seriesx.data+rangel);
+        gr2 = new TGraph(ranger-rangel, seriesy.time+rangel, seriesy.data+rangel);
+    }
+    gr1->SetTitle("Act");
+    gr2->SetTitle("Temp");
 
+    double *x;
+    int N;
+    x = gr1->GetX();
+    N = gr1->GetN();
+    for(int i=0;i<N;i++){
+        x[i] /= 24;
+    }
+    /* gr1->GetXaxis()->SetRangeUser(x[0], x[N-1]); */
+    gr1->GetXaxis()->SetRange(0, N-1);
+    gr1->GetYaxis()->SetTickLength(0.01);
+    x = gr2->GetX();
+    N = gr2->GetN();
+    for(int i=0;i<N;i++){
+        x[i] /= 24;
+    }
+    /* gr2->GetXaxis()->SetRangeUser(x[0], x[N-1]); */
+    gr2->GetYaxis()->SetTickLength(0.01);
+    gr2->GetXaxis()->SetRange(0, N-1);
 
-    TMicemem mice;
-    while(fscanf(config,"%s %s %s %d %d %d\n",_path,_name,_mutant,&batch,&start,&length) == 6){
+    gr1->GetXaxis()->SetTitle("Time (day)");
+    gr1->GetXaxis()->CenterTitle(1);
+    gr2->GetXaxis()->SetTitle("Time (day)");
+    gr2->GetXaxis()->CenterTitle(1);
 
-        struct period_dfa newperiod;
+    cv->SetFillStyle(4000);
+    pad->Divide(1,2, 0,0);
+    pad->SetFillStyle(4000);
+    pad->Draw();
+    pad->cd(1);
+    gr1->Draw();
+    pad->cd(2);
+    gr2->Draw();
 
-        /* if(batch != 3 && batch != 5) */
-        /* if(batch != 3) */
-        /* if (name != "12Otx2") */
-            /* continue; */
-        TMice Mice(mice);
-        Mice.nullize();
+    cv->Update();
+    cv->Print(name.c_str(), "Title:title");
 
-        std::string path(_path);
-        std::string mutant(_mutant);
-        std::string name(_name);
+    delete gr1;
+    delete gr2;
+    delete pad;
+    delete cv;
+}
 
-        mice.name = name;
-        mice.path = path;
-        mice.batch = batch;
-        mice.ifmutant = (mutant == "mutant"? true:false);
+void residuals_test(){
+    TMicemem micemem;
+    micemem.name = "12Otx2";
+    micemem.batch = 3;
+    micemem.ifmutant = true;
+    micemem.path = "../../data/";
 
-        std::cout << "Next loop" << std::endl;
-        Mice.SetRange(0,length*24); 
-        std::cout << "Range seted" << std::endl;
-        Mice.ReadMice(mice);
-        std::cout << "Readed" << std::endl;
-        Mice.SetwinSize(90);
+    TMice mice(micemem);
+    mice.nullize();
+    mice.SetRange(0, 36*24);
+    mice.ReadMice(micemem);
+    mice.SetwinSize(90);
+    mice.Average();
 
+    auto cv = new TCanvas("cv");
+    cv->cd();
 
-        Mice.Average();
+    auto grmice = new TGraph(mice.tempAve.size, mice.tempAve.time, mice.tempAve.data);
+    grmice->GetXaxis()->SetRangeUser(300, 348);
+    grmice->Draw();
 
-        char filename[255];
-        sprintf(filename, "../causality/batch%d/%s.Activity.txt", batch, _name);
-        printf("filename1 : %s\n", filename);
-        FILE *file1 = fopen(filename, "w");
-        sprintf(filename, "../causality/batch%d/%s.Temperature.txt", batch, _name);
-        printf("filename2 : %s\n", filename);
-        FILE *file2 = fopen(filename, "w");
+    auto fit1 = new TF1("fit1", "[0]*sin([1]*x+[2])+[3]", 300, 348);
+    fit1->SetParLimits(0, 0, 10);
+    fit1->SetParLimits(1, 0.20, 0.32);
+    fit1->SetParLimits(2, -24, 24);
+    /* fit1->SetParLimits(3, 0, 20); */
+    fit1->SetParLimits(3, 30, 50);
+    grmice->Fit(fit1, "R");
 
-        if(file1 != NULL && file2 != NULL){
-            for(int i=0; i< Mice.act.size; i ++)
-            {
-                fprintf(file1, "%.7lf\t%.7lf\n", Mice.act.time[i], Mice.act.data[i]);
-                fprintf(file2, "%.7lf\t%.7lf\n", Mice.temp.time[i], Mice.temp.data[i]);
-            }
-        } else {
-            fprintf(stdout, "../../causality/batch%d/%s.Activity.txt", batch, _name);
-            fprintf(stdout, "../../causality/batch%d/%s.Activity.txt", batch, _name);
-        }
+    fit1->Draw("SAME");
 
-        fclose(file1);
-        fclose(file2);
-
-        /* std::cout << "Averaged" << std::endl; */
-        double Parmax[4] = {5, 0.32, 24, 50};
-        double Parmin[4] = {0, 0.20, -24, 30};
-        Mice.SetfitSize(48);
-        Mice.SetfitStride(4);
-        Mice.SetParRange(Parmin,Parmax);
-        Mice.PrintDetails();
-        /* std::cout << "Details printed" << Mice.tempAve.size<< std::endl; */
-
-        Mice.GetPeriod();
-        /* /1* std::cout << "Period got" << std::endl; *1/ */
-        /* /1* Mice.DrawOverview(); *1/ */
-        /* Mice.DrawPeriodDist(); */
-        /* Mice.PeriodDFA(1); */
-        /* script.push_back(mice.name +"\tDFA1\t"+ std::to_string(Mice.period_dfa.lbp) + "\t" + std::to_string(Mice.period_dfa.rbp) + "\t" + std::to_string(Mice.period_dfa.index_l) + "\t" + std::to_string(Mice.period_dfa.index_r)); */
-        /* Mice.PeriodDFA(2); */
-        /* /1* script.push_back(mice.name +"\tDFA2\t"+ std::to_string(Mice.period_dfa.lbp) + "\t" + std::to_string(Mice.period_dfa.rbp) + "\t" + std::to_string(Mice.period_dfa.index_l) + "\t" + std::to_string(Mice.period_dfa.index_r)); *1/ */
-        /* Mice.PeriodDFA(3); */
-        /* script.push_back(mice.name +"\tDFA3\t"+ std::to_string(Mice.period_dfa.lbp) + "\t" + std::to_string(Mice.period_dfa.rbp) + "\t" + std::to_string(Mice.period_dfa.index_l) + "\t" + std::to_string(Mice.period_dfa.index_r)); */
-        /* Mice.PeriodDFA(4); */
-        /* /1* script.push_back(mice.name +"\tDFA4\t"+ std::to_string(Mice.period_dfa.lbp) + "\t" + std::to_string(Mice.period_dfa.rbp) + "\t" + std::to_string(Mice.period_dfa.index_l) + "\t" + std::to_string(Mice.period_dfa.index_r)); *1/ */
-        /* Mice.RhythmRemap(); */
-
-
-        for (int i = 1; i < 6; ++i) {
-            if (i != 2)
-                continue;
-            /* DFA_plot(Mice.actAve.data, Mice.actAve.size, i, mice.name + "_activity_" + std::to_string(i), &newperiod); */
-            /* script.push_back(mice.name +"\tDFA" + std::to_string(i)+ "\tactivity\t"+ std::to_string(newperiod.lbp) + "\t" + std::to_string(newperiod.rbp) + "\t" + std::to_string(newperiod.index_l) + "\t" + std::to_string(newperiod.index_r)); */
-            DFA_plot(Mice.tempAve.data, Mice.tempAve.size, i, mice.name + "_temperature_" + std::to_string(i), &newperiod);
-            script.push_back(mice.name +"\tDFA" + std::to_string(i)+ "\ttemperature\t"+ std::to_string(newperiod.lbp) + "\t" + std::to_string(newperiod.rbp) + "\t" + std::to_string(newperiod.index_l) + "\t" + std::to_string(newperiod.index_r));
-        }
-
-        /* std::cout << "Remaped" << std::endl; */
-        /* Mice.DrawHeatmap(); */
-        /* std::cout << "Drawn" << std::endl; */
-        /* Mice.GetErrorPercentage(0); */
+    int start_idx, end_idx=0; 
+    for (start_idx = end_idx; start_idx < mice.tempAve.size; ++start_idx) {
+       if (mice.tempAve.time[start_idx] >= 300)
+           break;
+    }
+    for (end_idx = start_idx; end_idx < mice.tempAve.size; ++end_idx) {
+       if (mice.tempAve.time[end_idx+1] >= 348)
+           break;
     }
 
-    for (std::string a: script){
-        std::cout << a << std::endl;
+    printf("time[%d,%d] = [%f,%f]\n", start_idx, end_idx, mice.tempAve.time[start_idx],
+            mice.tempAve.time[end_idx]);
+
+    int resize = end_idx - start_idx + 1;
+    double *residuals = new double[resize];
+    for (int i = 0; i < resize; ++i) {
+        residuals[i] = mice.tempAve.data[i + start_idx] - fit1->Eval(mice.tempAve.time[i + start_idx]) + 35;
     }
-    fclose(config);
-    return 0;
+
+    auto gresidual = new TGraph(resize, mice.tempAve.time+start_idx, residuals);
+    gresidual->SetLineColor(kGreen);
+    gresidual->Draw("SAME");
 }
 
 
+
 double fit_crossover(double *x, double *par);
+double fit_crossover_dual(double *x, double *par);
+double dfa_functions(double *x, double *par);
 double draw_crossover(double *x, double *par);
+
+struct dfa_data {
+    double scal;
+    double fluc;
+};
+
+enum mice_type {
+    mice_type_control = 0x01,
+    mice_type_mutant = 0x02,
+    mice_type_mutant_hyper = 0x04,
+};
+
+void normalize_double(double *data, int size);
+
+void CanvasPartition(TCanvas *C,const Int_t Nx,const Int_t Ny,
+                     Float_t lMargin, Float_t rMargin,
+                     Float_t bMargin, Float_t tMargin);
+
+void get_waveform(double *data, int size, double *waveform, int len);
